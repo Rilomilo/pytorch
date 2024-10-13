@@ -48,31 +48,57 @@ class Transformer(Module):
     https://github.com/pytorch/examples/tree/master/word_language_model
     """
 
-    def __init__(self, d_model: int = 512, nhead: int = 8, num_encoder_layers: int = 6,
-                 num_decoder_layers: int = 6, dim_feedforward: int = 2048, dropout: float = 0.1,
-                 activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
-                 custom_encoder: Optional[Any] = None, custom_decoder: Optional[Any] = None,
-                 layer_norm_eps: float = 1e-5, batch_first: bool = False, norm_first: bool = False,
-                 device=None, dtype=None) -> None:
+    def __init__(
+            self, 
+            d_model: int = 512, 
+            nhead: int = 8, 
+            num_encoder_layers: int = 6,
+            num_decoder_layers: int = 6, 
+            dim_feedforward: int = 2048, 
+            dropout: float = 0.1,
+            activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
+            custom_encoder: Optional[Any] = None, 
+            custom_decoder: Optional[Any] = None,
+            layer_norm_eps: float = 1e-5, 
+            batch_first: bool = False, 
+            norm_first: bool = False,
+            device=None, 
+            dtype=None
+        ) -> None:
         factory_kwargs = {'device': device, 'dtype': dtype}
         super().__init__()
-        torch._C._log_api_usage_once(f"torch.nn.modules.{self.__class__.__name__}")
 
         if custom_encoder is not None:
             self.encoder = custom_encoder
         else:
-            encoder_layer = TransformerEncoderLayer(d_model, nhead, dim_feedforward, dropout,
-                                                    activation, layer_norm_eps, batch_first, norm_first,
-                                                    **factory_kwargs)
+            encoder_layer = TransformerEncoderLayer(
+                d_model, 
+                nhead, 
+                dim_feedforward, 
+                dropout,
+                activation, 
+                layer_norm_eps, 
+                batch_first, 
+                norm_first,
+                **factory_kwargs
+            )
             encoder_norm = LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
             self.encoder = TransformerEncoder(encoder_layer, num_encoder_layers, encoder_norm)
 
         if custom_decoder is not None:
             self.decoder = custom_decoder
         else:
-            decoder_layer = TransformerDecoderLayer(d_model, nhead, dim_feedforward, dropout,
-                                                    activation, layer_norm_eps, batch_first, norm_first,
-                                                    **factory_kwargs)
+            decoder_layer = TransformerDecoderLayer(
+                d_model, 
+                nhead, 
+                dim_feedforward, 
+                dropout,
+                activation, 
+                layer_norm_eps, 
+                batch_first, 
+                norm_first,
+                **factory_kwargs
+            )
             decoder_norm = LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
             self.decoder = TransformerDecoder(decoder_layer, num_decoder_layers, decoder_norm)
 
@@ -83,9 +109,17 @@ class Transformer(Module):
 
         self.batch_first = batch_first
 
-    def forward(self, src: Tensor, tgt: Tensor, src_mask: Optional[Tensor] = None, tgt_mask: Optional[Tensor] = None,
-                memory_mask: Optional[Tensor] = None, src_key_padding_mask: Optional[Tensor] = None,
-                tgt_key_padding_mask: Optional[Tensor] = None, memory_key_padding_mask: Optional[Tensor] = None) -> Tensor:
+    def forward(
+            self, 
+            src: Tensor, 
+            tgt: Tensor, 
+            src_mask: Optional[Tensor] = None, 
+            tgt_mask: Optional[Tensor] = None,
+            memory_mask: Optional[Tensor] = None, 
+            src_key_padding_mask: Optional[Tensor] = None,
+            tgt_key_padding_mask: Optional[Tensor] = None, 
+            memory_key_padding_mask: Optional[Tensor] = None
+        ) -> Tensor:
         r"""Take in and process masked source/target sequences.
 
         Args:
@@ -134,18 +168,20 @@ class Transformer(Module):
         """
 
         is_batched = src.dim() == 3
-        if not self.batch_first and src.size(1) != tgt.size(1) and is_batched:
-            raise RuntimeError("the batch number of src and tgt must be equal")
-        elif self.batch_first and src.size(0) != tgt.size(0) and is_batched:
-            raise RuntimeError("the batch number of src and tgt must be equal")
-
-        if src.size(-1) != self.d_model or tgt.size(-1) != self.d_model:
-            raise RuntimeError("the feature number of src and tgt must be equal to d_model")
-
-        memory = self.encoder(src, mask=src_mask, src_key_padding_mask=src_key_padding_mask)
-        output = self.decoder(tgt, memory, tgt_mask=tgt_mask, memory_mask=memory_mask,
-                              tgt_key_padding_mask=tgt_key_padding_mask,
-                              memory_key_padding_mask=memory_key_padding_mask)
+    
+        memory = self.encoder(
+            src, 
+            mask=src_mask, 
+            src_key_padding_mask=src_key_padding_mask
+        )
+        output = self.decoder(
+            tgt, 
+            memory, 
+            tgt_mask=tgt_mask, 
+            memory_mask=memory_mask,
+            tgt_key_padding_mask=tgt_key_padding_mask,
+            memory_key_padding_mask=memory_key_padding_mask
+        )
         return output
 
     @staticmethod
@@ -185,7 +221,6 @@ class TransformerEncoder(Module):
 
     def __init__(self, encoder_layer, num_layers, norm=None, enable_nested_tensor=True, mask_check=True):
         super().__init__()
-        torch._C._log_api_usage_once(f"torch.nn.modules.{self.__class__.__name__}")
         self.layers = _get_clones(encoder_layer, num_layers)
         self.num_layers = num_layers
         self.norm = norm
@@ -342,14 +377,19 @@ class TransformerDecoder(Module):
 
     def __init__(self, decoder_layer, num_layers, norm=None):
         super().__init__()
-        torch._C._log_api_usage_once(f"torch.nn.modules.{self.__class__.__name__}")
         self.layers = _get_clones(decoder_layer, num_layers)
         self.num_layers = num_layers
         self.norm = norm
 
-    def forward(self, tgt: Tensor, memory: Tensor, tgt_mask: Optional[Tensor] = None,
-                memory_mask: Optional[Tensor] = None, tgt_key_padding_mask: Optional[Tensor] = None,
-                memory_key_padding_mask: Optional[Tensor] = None) -> Tensor:
+    def forward(
+            self, 
+            tgt: Tensor, 
+            memory: Tensor, 
+            tgt_mask: Optional[Tensor] = None,
+            memory_mask: Optional[Tensor] = None, 
+            tgt_key_padding_mask: Optional[Tensor] = None,
+            memory_key_padding_mask: Optional[Tensor] = None
+        ) -> Tensor:
         r"""Pass the inputs (and mask) through the decoder layer in turn.
 
         Args:
@@ -366,10 +406,14 @@ class TransformerDecoder(Module):
         output = tgt
 
         for mod in self.layers:
-            output = mod(output, memory, tgt_mask=tgt_mask,
-                         memory_mask=memory_mask,
-                         tgt_key_padding_mask=tgt_key_padding_mask,
-                         memory_key_padding_mask=memory_key_padding_mask)
+            output = mod(
+                output, 
+                memory, 
+                tgt_mask=tgt_mask,
+                memory_mask=memory_mask,
+                tgt_key_padding_mask=tgt_key_padding_mask,
+                memory_key_padding_mask=memory_key_padding_mask
+            )
 
         if self.norm is not None:
             output = self.norm(output)
@@ -436,14 +480,22 @@ class TransformerEncoderLayer(Module):
     """
     __constants__ = ['batch_first', 'norm_first']
 
-    def __init__(self, d_model: int, nhead: int, dim_feedforward: int = 2048, dropout: float = 0.1,
-                 activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
-                 layer_norm_eps: float = 1e-5, batch_first: bool = False, norm_first: bool = False,
-                 device=None, dtype=None) -> None:
+    def __init__(
+            self, 
+            d_model: int, 
+            nhead: int, 
+            dim_feedforward: int = 2048, 
+            dropout: float = 0.1,
+            activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
+            layer_norm_eps: float = 1e-5, 
+            batch_first: bool = False, 
+            norm_first: bool = False,
+            device=None, 
+            dtype=None
+        ) -> None:
         factory_kwargs = {'device': device, 'dtype': dtype}
         super().__init__()
-        self.self_attn = MultiheadAttention(d_model, nhead, dropout=dropout, batch_first=batch_first,
-                                            **factory_kwargs)
+        self.self_attn = MultiheadAttention(d_model, nhead, dropout=dropout, batch_first=batch_first, **factory_kwargs)
         # Implementation of Feedforward model
         self.linear1 = Linear(d_model, dim_feedforward, **factory_kwargs)
         self.dropout = Dropout(dropout)
@@ -480,7 +532,8 @@ class TransformerEncoderLayer(Module):
             src: Tensor,
             src_mask: Optional[Tensor] = None,
             src_key_padding_mask: Optional[Tensor] = None,
-            is_causal: bool = False) -> Tensor:
+            is_causal: bool = False
+        ) -> Tensor:
         r"""Pass the input through the encoder layer.
 
         Args:
@@ -644,16 +697,23 @@ class TransformerDecoderLayer(Module):
     """
     __constants__ = ['batch_first', 'norm_first']
 
-    def __init__(self, d_model: int, nhead: int, dim_feedforward: int = 2048, dropout: float = 0.1,
-                 activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
-                 layer_norm_eps: float = 1e-5, batch_first: bool = False, norm_first: bool = False,
-                 device=None, dtype=None) -> None:
+    def __init__(
+            self, 
+            d_model: int, 
+            nhead: int, 
+            dim_feedforward: int = 2048, 
+            dropout: float = 0.1,
+            activation: Union[str, Callable[[Tensor], Tensor]] = F.relu,
+            layer_norm_eps: float = 1e-5, 
+            batch_first: bool = False, 
+            norm_first: bool = False,
+            device=None, 
+            dtype=None
+        ) -> None:
         factory_kwargs = {'device': device, 'dtype': dtype}
         super().__init__()
-        self.self_attn = MultiheadAttention(d_model, nhead, dropout=dropout, batch_first=batch_first,
-                                            **factory_kwargs)
-        self.multihead_attn = MultiheadAttention(d_model, nhead, dropout=dropout, batch_first=batch_first,
-                                                 **factory_kwargs)
+        self.self_attn = MultiheadAttention(d_model, nhead, dropout=dropout, batch_first=batch_first, **factory_kwargs)
+        self.multihead_attn = MultiheadAttention(d_model, nhead, dropout=dropout, batch_first=batch_first, **factory_kwargs)
         # Implementation of Feedforward model
         self.linear1 = Linear(d_model, dim_feedforward, **factory_kwargs)
         self.dropout = Dropout(dropout)
@@ -720,23 +780,25 @@ class TransformerDecoderLayer(Module):
         return x
 
     # self-attention block
-    def _sa_block(self, x: Tensor,
-                  attn_mask: Optional[Tensor], key_padding_mask: Optional[Tensor], is_causal: bool = False) -> Tensor:
-        x = self.self_attn(x, x, x,
-                           attn_mask=attn_mask,
-                           key_padding_mask=key_padding_mask,
-                           is_causal=is_causal,
-                           need_weights=False)[0]
+    def _sa_block(self, x: Tensor, attn_mask: Optional[Tensor], key_padding_mask: Optional[Tensor], is_causal: bool = False) -> Tensor:
+        x = self.self_attn(
+            x, x, x,
+            attn_mask=attn_mask,
+            key_padding_mask=key_padding_mask,
+            is_causal=is_causal,
+            need_weights=False
+        )[0]
         return self.dropout1(x)
 
     # multihead attention block
-    def _mha_block(self, x: Tensor, mem: Tensor,
-                   attn_mask: Optional[Tensor], key_padding_mask: Optional[Tensor], is_causal: bool = False) -> Tensor:
-        x = self.multihead_attn(x, mem, mem,
-                                attn_mask=attn_mask,
-                                key_padding_mask=key_padding_mask,
-                                is_causal=is_causal,
-                                need_weights=False)[0]
+    def _mha_block(self, x: Tensor, mem: Tensor, attn_mask: Optional[Tensor], key_padding_mask: Optional[Tensor], is_causal: bool = False) -> Tensor:
+        x = self.multihead_attn(
+            x, mem, mem,
+            attn_mask=attn_mask,
+            key_padding_mask=key_padding_mask,
+            is_causal=is_causal,
+            need_weights=False
+        )[0]
         return self.dropout2(x)
 
     # feed forward block
